@@ -10,22 +10,6 @@ jobs:
   test:
     name: Run Tests
     runs-on: ubuntu-latest
-    
-    services:
-      mysql:
-        image: mysql:8.0
-        env:
-          MYSQL_ROOT_PASSWORD: rootpassword
-          MYSQL_DATABASE: the_transporter
-          MYSQL_USER: transporteur
-          MYSQL_PASSWORD: transporteur123
-        ports:
-          - 3306:3306
-        options: >-
-          --health-cmd="mysqladmin ping -h localhost -u root -prootpassword"
-          --health-interval=10s
-          --health-timeout=5s
-          --health-retries=5
 
     steps:
       - name: Checkout code
@@ -41,9 +25,7 @@ jobs:
       - name: Run tests
         run: mvn clean test
         env:
-          SPRING_DATASOURCE_URL: jdbc:mysql://localhost:3306/the_transporter?createDatabaseIfNotExist=true&useSSL=false&serverTimezone=UTC
-          SPRING_DATASOURCE_USERNAME: transporteur
-          SPRING_DATASOURCE_PASSWORD: transporteur123
+          SPRING_PROFILES_ACTIVE: test
 
       - name: Generate test report
         if: always()

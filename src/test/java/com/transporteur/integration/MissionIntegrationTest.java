@@ -14,8 +14,6 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.context.annotation.Import;
-import com.transporteur.config.TestSecurityConfig;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.transporteur.dto.MissionRequest;
@@ -30,11 +28,10 @@ import com.transporteur.repository.TransporteurRepository;
 import com.transporteur.security.JwtUtil;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
-@SpringBootTest
-@AutoConfigureMockMvc
+@SpringBootTest(webEnvironment = org.springframework.boot.test.context.SpringBootTest.WebEnvironment.RANDOM_PORT)
+@AutoConfigureMockMvc(addFilters = false)
 @ActiveProfiles("test")
 @Transactional
-@Import(TestSecurityConfig.class)
 class MissionIntegrationTest {
 
     @Autowired

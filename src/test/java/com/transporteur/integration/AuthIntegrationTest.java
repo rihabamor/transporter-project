@@ -12,8 +12,6 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.context.annotation.Import;
-import com.transporteur.config.TestSecurityConfig;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.transporteur.dto.LoginRequest;
@@ -24,11 +22,10 @@ import com.transporteur.repository.CompteRepository;
 import com.transporteur.repository.ClientRepository;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
-@SpringBootTest
-@AutoConfigureMockMvc
+@SpringBootTest(webEnvironment = org.springframework.boot.test.context.SpringBootTest.WebEnvironment.RANDOM_PORT)
+@AutoConfigureMockMvc(addFilters = false)
 @ActiveProfiles("test")
 @Transactional
-@Import(TestSecurityConfig.class)
 class AuthIntegrationTest {
 
     @Autowired

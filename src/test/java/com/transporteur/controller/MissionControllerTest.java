@@ -19,6 +19,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.transporteur.dto.MissionRequest;
 import com.transporteur.dto.MissionResponse;
 import com.transporteur.dto.PriceProposalRequest;
@@ -42,6 +43,7 @@ class MissionControllerTest {
     void setUp() {
         mockMvc = MockMvcBuilders.standaloneSetup(missionController).build();
         objectMapper = new ObjectMapper();
+        objectMapper.registerModule(new JavaTimeModule());
     }
 
     @Test
