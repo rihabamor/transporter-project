@@ -24,7 +24,7 @@ git commit -m "Initial commit: Add Docker, CI/CD workflows, tests and DevOps con
 
 ```powershell
 # Exemple : si votre repo s'appelle "transporter-project"
-git remote add origin https://github.com/rihabamor/transporter-project.git
+git remote add origin https:https://github.com/rihabamor/transporter-project.git
 
 # Vérifier
 git remote -v
