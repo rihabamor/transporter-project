@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebSocket Location Tracker - Test Page</title>
+    <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            border-bottom: 3px solid #4CAF50;
+            padding-bottom: 10px;
+        }
+        .status {
+            padding: 10px;
+            border-radius: 5px;
+            font-weight: bold;
+            margin-bottom: 15px;
+        }
+        .status.connected {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .status.disconnected {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        input {
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+        button {
+            padding: 10px 20px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        .stop-btn {
+            background-color: #f44336;
+        }
+        .stop-btn:hover {
+            background-color: #da190b;
+        }
+        .location-info {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+        .info-card {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            border-left: 4px solid #4CAF50;
+        }
+        .info-card label {
+            display: block;
+            font-size: 12px;
+            color: #666;
+            text-transform: uppercase;
+            margin-bottom: 5px;
+        }
+        .info-card .value {
+            font-size: 20px;
+            font-weight: bold;
+            color: #333;
+        }
+        .progress-bar {
+            width: 100%;
+            height: 30px;
+            background-color: #e9ecef;
+            border-radius: 15px;
+            overflow: hidden;
+            margin-top: 20px;
+        }
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #4CAF50, #8BC34A);
+            transition: width 0.5s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+        }
+        .log-container {
+            background: #1e1e1e;
+            color: #00ff00;
+            padding: 15px;
+            border-radius: 5px;
+            max-height: 400px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+        }
+        .log-entry {
+            margin-bottom: 5px;
+            padding: 2px 0;
+        }
+        .log-success { color: #00ff00; }
+        .log-error { color: #ff4444; }
+        .log-info { color: #00bfff; }
+        .log-warning { color: #ffaa00; }
+    </style>
+</head>
+<body>
+    <h1>🚚 WebSocket Location Tracker - Debug Tool</h1>
+    
+    <div class="container">
+        <div id="status" class="status disconnected">🔴 Disconnected</div>
+        
+        <div class="controls">
+            <input type="number" id="missionId" placeholder="Mission ID (e.g., 4)" value="4">
+            <button onclick="connectWebSocket()">Connect to WebSocket</button>
+            <button onclick="subscribeMission()" id="subscribeBtn" disabled>Subscribe to Mission</button>
+            <button onclick="disconnect()" class="stop-btn">Disconnect</button>
+        </div>
+        
+        <p><strong>Instructions:</strong></p>
+        <ol>
+            <li>Make sure your backend is running on <code>http://localhost:8080</code></li>
+            <li><strong>IMPORTANT:</strong> Don't open this file directly! Use one of these methods:
+                <ul>
+                    <li><strong>Option 1 (Python):</strong> Run in terminal: <code>python -m http.server 8000</code> then open <code>http://localhost:8000/websocket-test.html</code></li>
+                    <li><strong>Option 2 (VS Code):</strong> Install "Live Server" extension, right-click this file → "Open with Live Server"</li>
+                    <li><strong>Option 3 (Node.js):</strong> Run <code>npx http-server -p 8000</code> then open <code>http://localhost:8000/websocket-test.html</code></li>
+                </ul>
+            </li>
+            <li>Click "Connect to WebSocket"</li>
+            <li>Enter Mission ID (default is 4)</li>
+            <li>Click "Subscribe to Mission"</li>
+            <li>Watch for location updates below (every 5 seconds)</li>
+        </ol>
+    </div>
+    
+    <div class="container" id="locationContainer" style="display: none;">
+        <h2>📍 Current Location</h2>
+        <div class="location-info">
+            <div class="info-card">
+                <label>Mission ID</label>
+                <div class="value" id="displayMissionId">-</div>
+            </div>
+            <div class="info-card">
+                <label>Latitude</label>
+                <div class="value" id="latitude">-</div>
+            </div>
+            <div class="info-card">
+                <label>Longitude</label>
+                <div class="value" id="longitude">-</div>
+            </div>
+            <div class="info-card">
+                <label>Speed</label>
+                <div class="value" id="speed">-</div>
+            </div>
+            <div class="info-card">
+                <label>Distance Remaining</label>
+                <div class="value" id="distance">-</div>
+            </div>
+            <div class="info-card">
+                <label>Last Update</label>
+                <div class="value" id="timestamp">-</div>
+            </div>
+        </div>
+        
+        <div class="progress-bar">
+            <div class="progress-fill" id="progress" style="width: 0%">0%</div>
+        </div>
+    </div>
+    
+    <div class="container">
+        <h2>📋 Console Log</h2>
+        <div class="log-container" id="logContainer"></div>
+    </div>
+
+    <script>
+        let stompClient = null;
+        let subscription = null;
+        let updateCount = 0;
+
+        function log(message, type = 'info') {
+            const logContainer = document.getElementById('logContainer');
+            const timestamp = new Date().toLocaleTimeString();
+            const entry = document.createElement('div');
+            entry.className = `log-entry log-${type}`;
+            entry.textContent = `[${timestamp}] ${message}`;
+            logContainer.appendChild(entry);
+            logContainer.scrollTop = logContainer.scrollHeight;
+            console.log(message);
+        }
+
+        function updateStatus(connected) {
+            const statusEl = document.getElementById('status');
+            const subscribeBtn = document.getElementById('subscribeBtn');
+            
+            if (connected) {
+                statusEl.className = 'status connected';
+                statusEl.textContent = '🟢 Connected to WebSocket';
+                subscribeBtn.disabled = false;
+            } else {
+                statusEl.className = 'status disconnected';
+                statusEl.textContent = '🔴 Disconnected';
+                subscribeBtn.disabled = true;
+            }
+        }
+
+        function connectWebSocket() {
+            if (stompClient && stompClient.connected) {
+                log('Already connected to WebSocket', 'warning');
+                return;
+            }
+
+            log('🚀 Connecting to WebSocket server...', 'info');
+            
+            const socket = new SockJS('http://localhost:8080/ws-location');
+            stompClient = Stomp.over(socket);
+            
+            stompClient.debug = function(str) {
+                if (str.includes('PING') || str.includes('PONG')) return;
+                log('🔧 ' + str, 'info');
+            };
+
+            stompClient.connect({}, function(frame) {
+                log('✅ WebSocket Connected Successfully!', 'success');
+                log('Frame: ' + frame, 'info');
+                updateStatus(true);
+            }, function(error) {
+                log('❌ WebSocket Connection Error: ' + error, 'error');
+                updateStatus(false);
+            });
+
+            socket.onclose = function() {
+                log('⚠️ WebSocket Connection Closed', 'warning');
+                updateStatus(false);
+            };
+        }
+
+        function subscribeMission() {
+            if (!stompClient || !stompClient.connected) {
+                log('❌ Not connected to WebSocket. Please connect first.', 'error');
+                return;
+            }
+
+            const missionId = document.getElementById('missionId').value;
+            if (!missionId) {
+                log('❌ Please enter a Mission ID', 'error');
+                return;
+            }
+
+            const topic = '/topic/location/' + missionId;
+            log('📡 Subscribing to: ' + topic, 'info');
+
+            if (subscription) {
+                subscription.unsubscribe();
+                log('🔌 Unsubscribed from previous mission', 'info');
+            }
+
+            subscription = stompClient.subscribe(topic, function(message) {
+                updateCount++;
+                const locationUpdate = JSON.parse(message.body);
+                
+                log('📍 Location Update #' + updateCount + ' received!', 'success');
+                log('   Mission: ' + locationUpdate.missionId, 'success');
+                log('   Lat: ' + locationUpdate.latitude.toFixed(6), 'success');
+                log('   Lon: ' + locationUpdate.longitude.toFixed(6), 'success');
+                log('   Speed: ' + locationUpdate.speed.toFixed(1) + ' km/h', 'success');
+                log('   Progress: ' + locationUpdate.progressPercentage + '%', 'success');
+                
+                updateLocationDisplay(locationUpdate);
+            });
+
+            log('✅ Subscribed successfully! Waiting for location updates...', 'success');
+            document.getElementById('locationContainer').style.display = 'block';
+        }
+
+        function updateLocationDisplay(update) {
+            document.getElementById('displayMissionId').textContent = update.missionId;
+            document.getElementById('latitude').textContent = update.latitude.toFixed(6);
+            document.getElementById('longitude').textContent = update.longitude.toFixed(6);
+            document.getElementById('speed').textContent = update.speed.toFixed(1) + ' km/h';
+            document.getElementById('distance').textContent = update.distanceRemaining.toFixed(2) + ' km';
+            document.getElementById('timestamp').textContent = new Date(update.timestamp).toLocaleTimeString();
+            
+            const progress = document.getElementById('progress');
+            progress.style.width = update.progressPercentage + '%';
+            progress.textContent = update.progressPercentage + '%';
+        }
+
+        function disconnect() {
+            if (subscription) {
+                subscription.unsubscribe();
+                subscription = null;
+                log('🔌 Unsubscribed from mission updates', 'info');
+            }
+            
+            if (stompClient) {
+                stompClient.disconnect(function() {
+                    log('🔌 Disconnected from WebSocket', 'info');
+                    updateStatus(false);
+                    stompClient = null;
+                });
+            }
+        }
+
+        // Auto-connect on page load (optional)
+        // window.onload = function() {
+        //     connectWebSocket();
+        // };
+
+        log('🎬 WebSocket Test Page Ready', 'success');
+        log('ℹ️ Click "Connect to WebSocket" to start', 'info');
+    </script>
+</body>
+</html>
